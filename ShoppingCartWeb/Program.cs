@@ -61,7 +61,7 @@ app.MapControllerRoute(
 app.Run();
 void dataSedding()
 {
-    using (var scope =app.Services.CreateScope())
+    using (var scope = app.Services.CreateScope())
     {
         var DbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
         DbInitializer.Initialize();
