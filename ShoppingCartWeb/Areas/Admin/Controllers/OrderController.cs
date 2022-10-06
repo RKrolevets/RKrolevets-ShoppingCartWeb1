@@ -21,16 +21,16 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
         }
 
         #region APICALL
-        public IActionResult AllOrders(string status)
+        public async Task<IActionResult> AllOrders(string status)
         {
             IEnumerable<OrderHeader> orderHeader;
             if (User.IsInRole("Admin") || User.IsInRole("Employee"))
-                orderHeader = _unitOfWork.OrderHeader.GetAll(includeProperties: "ApplicationUser");
+                orderHeader = await _unitOfWork.OrderHeader.GetAllAsync(includeProperties: "ApplicationUser");
             else
             {
                 var claimsIdentity = (ClaimsIdentity)User.Identity;
                 var claims = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
-                orderHeader = _unitOfWork.OrderHeader.GetAll(x => x.ApplicationUserId == claims.Value);
+                orderHeader = await _unitOfWork.OrderHeader.GetAllAsync(x => x.ApplicationUserId == claims.Value);
             }
             switch (status)
             {
@@ -58,21 +58,21 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
             return View();
         }
 
-        public IActionResult OrderDetails(int id)
+        public async Task<IActionResult> OrderDetails(int id)
         {
             OrderVM orderVM = new OrderVM()
             {
-                OrderHeader = _unitOfWork.OrderHeader.GetT(x => x.Id == id, includeProperties: "ApplicationUser"),
-                OrderDetails = _unitOfWork.OrderDetail.GetAll(x => x.OrderHeaderId == id, includeProperties: "Product")
+                OrderHeader = await _unitOfWork.OrderHeader.GetTAsync(x => x.Id == id, includeProperties: "ApplicationUser"),
+                OrderDetails = await _unitOfWork.OrderDetail.GetAllAsync(x => x.OrderHeaderId == id, includeProperties: "Product")
             };
             return View(orderVM);
         }
 
         [Authorize(Roles = WebSiteRole.Role_Admin + "," + WebSiteRole.Role_Employee)]
         [HttpPost]
-        public IActionResult OrderDetails(OrderVM vm)
+        public async Task<IActionResult> OrderDetails(OrderVM vm)
         {
-            var orderHeader = _unitOfWork.OrderHeader.GetT(x => x.Id == vm.OrderHeader.Id);
+            var orderHeader = await _unitOfWork.OrderHeader.GetTAsync(x => x.Id == vm.OrderHeader.Id);
             orderHeader.Name = vm.OrderHeader.Name;
             orderHeader.Phone = vm.OrderHeader.Phone;
             orderHeader.Address = vm.OrderHeader.Address;
@@ -84,38 +84,39 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
             if (vm.OrderHeader.TrackingNumber != null)
                 orderHeader.TrackingNumber = vm.OrderHeader.TrackingNumber;
             _unitOfWork.OrderHeader.Update(orderHeader);
-            _unitOfWork.Save();
+            await _unitOfWork.SaveAsync();
             TempData["success"] = "Info Updated";
             return RedirectToAction("OrderDetails", "Order", new { id = vm.OrderHeader.Id });
         }
 
         [Authorize(Roles = WebSiteRole.Role_Admin + "," + WebSiteRole.Role_Employee)]
-        public IActionResult InProcess(OrderVM vm)
+        public async Task<IActionResult> InProcess(OrderVM vm)
         {
-            _unitOfWork.OrderHeader.UpdateStatus(vm.OrderHeader.Id, OrderStatus.StatusInProcess);
-            _unitOfWork.Save();
+            await _unitOfWork.OrderHeader.UpdateStatusAsync(vm.OrderHeader.Id, OrderStatus.StatusInProcess);
+            await _unitOfWork.SaveAsync();
             TempData["success"] = "Order status updated to Inprocess";
             return RedirectToAction("OrderDetails", "Order", new { id = vm.OrderHeader.Id });
         }
 
         [Authorize(Roles = WebSiteRole.Role_Admin + "," + WebSiteRole.Role_Employee)]
-        public IActionResult Shipped(OrderVM vm)
+        public async Task<IActionResult> Shipped(OrderVM vm)
         {
-            var orderHeader = _unitOfWork.OrderHeader.GetT(x => x.Id == vm.OrderHeader.Id);
+            var orderHeader = await _unitOfWork.OrderHeader.GetTAsync(x => x.Id == vm.OrderHeader.Id);
             orderHeader.Carrier = vm.OrderHeader.Carrier;
             orderHeader.TrackingNumber = vm.OrderHeader.TrackingNumber;
             orderHeader.OrderStatus = OrderStatus.StatusShipped;
             orderHeader.DateOfShipping = DateTime.Now;
 
             _unitOfWork.OrderHeader.Update(orderHeader);
-            _unitOfWork.Save();
+            await _unitOfWork.SaveAsync();
             TempData["success"] = "Order status updated to Shipped";
             return RedirectToAction("OrderDetails", "Order", new { id = vm.OrderHeader.Id });
         }
+
         [Authorize(Roles = WebSiteRole.Role_Admin + "," + WebSiteRole.Role_Employee)]
-        public IActionResult CancelOrder (OrderVM vm)
+        public async Task<IActionResult> CancelOrder(OrderVM vm)
         {
-            var orderHeader = _unitOfWork.OrderHeader.GetT(x => x.Id == vm.OrderHeader.Id);
+            var orderHeader = await _unitOfWork.OrderHeader.GetTAsync(x => x.Id == vm.OrderHeader.Id);
             if (orderHeader.PaymentStatus == PaymentStatus.StatusApproved)
             {
                 var refundOptions = new RefundCreateOptions()
@@ -125,21 +126,22 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
                 };
                 var service = new RefundService();
                 Refund refund = service.Create(refundOptions);
-                _unitOfWork.OrderHeader.UpdateStatus(vm.OrderHeader.Id, OrderStatus.StatusCancelled);
+                await _unitOfWork.OrderHeader.UpdateStatusAsync(vm.OrderHeader.Id, OrderStatus.StatusCancelled);
             }
             else
             {
-                _unitOfWork.OrderHeader.UpdateStatus(vm.OrderHeader.Id, OrderStatus.StatusCancelled);
+                await _unitOfWork.OrderHeader.UpdateStatusAsync(vm.OrderHeader.Id, OrderStatus.StatusCancelled);
             }
-            _unitOfWork.Save();
+            await _unitOfWork.SaveAsync();
             TempData["success"] = "Order cancelled";
             return RedirectToAction("OrderDetails", "Order", new { id = vm.OrderHeader.Id });
         }
-        public IActionResult PayNow(OrderVM vm)
+
+        public async Task<IActionResult> PayNow(OrderVM vm)
         {
-            var orderheader = _unitOfWork.OrderHeader.GetT(x => x.Id == vm.OrderHeader.Id, 
+            var orderheader = await _unitOfWork.OrderHeader.GetTAsync(x => x.Id == vm.OrderHeader.Id, 
                 includeProperties:"ApplicationUser");
-            var orderDetail = _unitOfWork.OrderDetail.GetAll(x => x.OrderHeaderId == vm.OrderHeader.Id,
+            var orderDetail = await _unitOfWork.OrderDetail.GetAllAsync(x => x.OrderHeaderId == vm.OrderHeader.Id,
                 includeProperties:"Product");
             var domain = "https://Localhost:7191/";
             var options = new SessionCreateOptions
@@ -168,11 +170,10 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
             }
             var service = new SessionService();
             Session session = service.Create(options);
-            _unitOfWork.OrderHeader.PaymentStatus(vm.OrderHeader.Id, session.Id, session.PaymentIntentId);
-            _unitOfWork.Save();
+            await _unitOfWork.OrderHeader.PaymentStatusAsync(vm.OrderHeader.Id, session.Id, session.PaymentIntentId);
+            await _unitOfWork.SaveAsync();
             Response.Headers.Add("Location", session.Url);
             return new StatusCodeResult(303);
-            return RedirectToAction("Index", "Home");
         }
     }
 }

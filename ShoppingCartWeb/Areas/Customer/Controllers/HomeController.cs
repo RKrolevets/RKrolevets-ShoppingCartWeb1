@@ -21,23 +21,23 @@ namespace ShoppingCart.Web.Areas.Customer.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            IEnumerable<Product> products = _unitOfWork.Product.GetAll(includeProperties: "Category");
+            IEnumerable<Product> products = await _unitOfWork.Product.GetAllAsync(includeProperties: "Category");
             var claimsIdentity = (ClaimsIdentity?)User.Identity;
             var claims = claimsIdentity?.FindFirst(ClaimTypes.NameIdentifier);
             if (claims != null)
-                HttpContext.Session.SetInt32("SessionCart", _unitOfWork
-                            .Cart.GetAll(x => x.ApplicationUserId == claims.Value).ToList().Count);
+                HttpContext.Session.SetInt32("SessionCart", (await _unitOfWork
+                            .Cart.GetAllAsync(x => x.ApplicationUserId == claims.Value)).ToList().Count);
             return View(products);
         }
 
         [HttpGet]
-        public IActionResult Details (int? productId)
+        public async Task<IActionResult> Details (int? productId)
         {
             Cart cart = new()
             {
-                Product = _unitOfWork.Product.GetT(x => x.Id == productId,
+                Product = await _unitOfWork.Product.GetTAsync(x => x.Id == productId,
                     includeProperties:"Category"),
                 Count = 1,
                 ProductId = (int)productId
@@ -48,28 +48,25 @@ namespace ShoppingCart.Web.Areas.Customer.Controllers
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
-        public IActionResult Details(Cart cart)
+        public async Task<IActionResult> Details(Cart cart)
         {
             if (ModelState.IsValid)
             {
                 var claimsIdentity = (ClaimsIdentity)User.Identity;
                 var claims = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
                 cart.ApplicationUserId = claims.Value;
-                var cartItem = _unitOfWork.Cart.GetT(x => x.ProductId == cart.ProductId &&
+                var cartItem = await _unitOfWork.Cart.GetTAsync(x => x.ProductId == cart.ProductId &&
                 x.ApplicationUserId == claims.Value);
 
                 if (cartItem == null)
                 {
-                    _unitOfWork.Cart.Add(cart);
-                    _unitOfWork.Save();
-                    //Изменение отобраения количества товаров в корзине. Перенесено в индекс
-                    //HttpContext.Session.SetInt32("SessionCart", _unitOfWork
-                    //.Cart.GetAll(x => x.ApplicationUserId == claims.Value).ToList().Count);
+                    await _unitOfWork.Cart.AddAsync(cart);
+                    await _unitOfWork.SaveAsync();
                 }
                 else
                 {
-                    _unitOfWork.Cart.IncrementCartItem(cartItem, cart.Count);
-                    _unitOfWork.Save();
+                    await _unitOfWork.Cart.IncrementCartItemAsync(cartItem, cart.Count);
+                    await _unitOfWork.SaveAsync();
                 }
             }
             return RedirectToAction("Index");

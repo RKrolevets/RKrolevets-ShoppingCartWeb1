@@ -12,15 +12,16 @@ namespace ShoppingCart.DataAccess.Repositories
     {
         private readonly ApplicationDbContext _context;
         private DbSet<T> _dbSet;
+
         public Repository(ApplicationDbContext context)
         {
             _context = context;
             _dbSet = context.Set<T>();
         }
 
-        public void Add(T entity)
+        public async Task AddAsync(T entity)
         {
-            _dbSet.Add(entity);
+            await _dbSet.AddAsync(entity);
         }
 
         public void Delete(T entity)
@@ -33,7 +34,7 @@ namespace ShoppingCart.DataAccess.Repositories
             _dbSet.RemoveRange(entity);
         }
 
-        public IEnumerable<T> GetAll(System.Linq.Expressions.Expression<Func<T, bool>>? predicate = null
+        public async Task <IEnumerable<T>> GetAllAsync(System.Linq.Expressions.Expression<Func<T, bool>>? predicate = null
             , string? includePropertirs = null)
         {
             IQueryable<T> query = _dbSet;
@@ -42,17 +43,19 @@ namespace ShoppingCart.DataAccess.Repositories
             if (includePropertirs != null)
                 foreach (var item in includePropertirs.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
                     query = query.Include(item);
-            return query.ToList();
+            var result = await query.ToListAsync();
+            return result;
         }
 
-        public T GetT(System.Linq.Expressions.Expression<Func<T, bool>> predicate, string? includePropertirs = null)
+        public async Task<T> GetTAsync(System.Linq.Expressions.Expression<Func<T, bool>> predicate
+            , string? includePropertirs = null)
         {
             IQueryable<T> query = _dbSet;
             query = query.Where(predicate);
             if (includePropertirs != null)
                 foreach (var item in includePropertirs.Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
                     query = query.Include(item);
-            return query.FirstOrDefault();
+            return await query.FirstOrDefaultAsync();
         }
     }
 }

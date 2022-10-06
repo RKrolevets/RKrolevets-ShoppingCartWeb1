@@ -9,8 +9,8 @@ namespace ShoppingCart.DataAccess.Repositories
 {
     public interface ICartRepository : IRepository<Cart>
     {
-        void Update (Cart cart);
-        void IncrementCartItem (Cart cart, int amount);
-        void DecrementCartItem (Cart cart, int amount);
+        Task UpdateAsync (Cart cart);
+        Task IncrementCartItemAsync (Cart cart, int amount);
+        Task DecrementCartItemAsync (Cart cart, int amount);
     }
 }

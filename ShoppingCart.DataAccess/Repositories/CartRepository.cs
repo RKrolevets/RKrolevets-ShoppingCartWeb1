@@ -1,4 +1,5 @@
-﻿using ShoppingCart.DataAccess.Data;
+﻿using Microsoft.EntityFrameworkCore;
+using ShoppingCart.DataAccess.Data;
 using ShoppingCart.Models;
 using System;
 using System.Collections.Generic;
@@ -11,13 +12,15 @@ namespace ShoppingCart.DataAccess.Repositories
     public class CartRepository : Repository<Cart>, ICartRepository
     {
         private ApplicationDbContext _context;
+
         public CartRepository(ApplicationDbContext context) : base(context)
         {
             _context = context;
         }
-        public void Update(Cart cart)
+
+        public async Task UpdateAsync(Cart cart)
         {
-            var cartDb = _context.Carts.FirstOrDefault(x => x.Id == cart.Id);
+            var cartDb = await _context.Carts.FirstOrDefaultAsync(x => x.Id == cart.Id);
             if (cartDb != null)
             {
                 cartDb.Product = cart.Product;
@@ -26,16 +29,17 @@ namespace ShoppingCart.DataAccess.Repositories
                 cartDb.Count = cart.Count;
             }
         }
-        public void DecrementCartItem(Cart cart, int amount)
+
+        public async Task DecrementCartItemAsync(Cart cart, int amount)
         {
-            var cartDb = _context.Carts.FirstOrDefault(c => c.Id == cart.Id);
+            var cartDb = await _context.Carts.FirstOrDefaultAsync(c => c.Id == cart.Id);
             if (cartDb != null)
                 cartDb.Count -= amount;
         }
 
-        public void IncrementCartItem(Cart cart, int count)
+        public async Task IncrementCartItemAsync(Cart cart, int count)
         {
-            var cartDb = _context.Carts.FirstOrDefault(c => c.Id == cart.Id);
+            var cartDb = await _context.Carts.FirstOrDefaultAsync(c => c.Id == cart.Id);
             if (cartDb != null)
                 cartDb.Count += count;
         }

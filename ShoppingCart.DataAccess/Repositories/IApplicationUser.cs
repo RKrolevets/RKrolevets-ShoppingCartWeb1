@@ -9,6 +9,6 @@ namespace ShoppingCart.DataAccess.Repositories
 {
     public interface IApplicationUser : IRepository<ApplicationUser>
     {
-        void Update(ApplicationUser applicationUser);
+        Task UpdateAsync(ApplicationUser applicationUser);
     }
 }

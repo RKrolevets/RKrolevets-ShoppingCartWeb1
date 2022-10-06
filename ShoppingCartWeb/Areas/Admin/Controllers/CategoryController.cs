@@ -16,22 +16,22 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
             _unitofWork = unitofWork;
         }
 
-        public IActionResult Index ()
+        public async Task<IActionResult> Index()
         {
-            CategoryVM categoryVM = new CategoryVM();
-            categoryVM.Categories = _unitofWork.Category.GetAll();
+            var categoryVM = new CategoryVM();
+            categoryVM.Categories = await _unitofWork.Category.GetAllAsync();
             return View(categoryVM);
         }
 
         [HttpGet]
-        public IActionResult CreateUpdate(int? id)
+        public async Task<IActionResult> CreateUpdate(int? id)
         {
-            CategoryVM vm = new CategoryVM();
+            var vm = new CategoryVM();
             if (id == null || id==0)
                 return View(vm);
             else
             {
-                vm.Category = _unitofWork.Category.GetT(x => x.Id == id);
+                vm.Category = await _unitofWork.Category.GetTAsync(x => x.Id == id);
                 if (vm.Category == null)
                     return NotFound();
                 else
@@ -40,45 +40,46 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult CreateUpdate (CategoryVM vm)
+        public async Task<IActionResult> CreateUpdate (CategoryVM vm)
         {
             if (ModelState.IsValid)
             {
-                if (vm.Category.Id==0)
+                if (vm.Category.Id == 0)
                 {
-                    _unitofWork.Category.Add(vm.Category);
+                    await _unitofWork.Category.AddAsync(vm.Category);
                     TempData["success"] = "Category Created Done";
                 }
                 else
                 {
-                    _unitofWork.Category.Update(vm.Category);
+                    await _unitofWork.Category.UpdateAsync(vm.Category);
                     TempData["success"] = "Category Updated Done";
                 }
-                _unitofWork.Save();
+                await _unitofWork.SaveAsync();
                 return RedirectToAction("Index");
             }
             return RedirectToAction("Index");
         }
 
         [HttpGet]
-        public IActionResult Delete (int? id)
+        public async Task<IActionResult> Delete (int? id)
         {
             if (id == null || id == 0)
                 return NotFound();
-            var category = _unitofWork.Category.GetT(x => x.Id == id);
-            if (category==null)
+            var category = await _unitofWork.Category.GetTAsync(x => x.Id == id);
+            if (category == null)
                 return NotFound();
             return View(category);
         }
+
         [HttpPost,ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public IActionResult DeleteData (int? id)
+        public async Task<IActionResult> DeleteData (int? id)
         {
-            var category = _unitofWork.Category.GetT(x => x.Id == id);
+            var category = await _unitofWork.Category.GetTAsync(x => x.Id == id);
             if (category == null)
                 return NotFound();
             _unitofWork.Category.Delete(category);
-            _unitofWork.Save();
+            await _unitofWork.SaveAsync();
             TempData["success"] = "Category Deleted Done";
             return RedirectToAction("Index");
         }

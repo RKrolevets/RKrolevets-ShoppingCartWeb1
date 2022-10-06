@@ -13,6 +13,7 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
     {
         private IUnitOfWork _unitOfWork;
         IWebHostEnvironment _hostingEnvironment;
+
         public ProductController(IUnitOfWork unitOfWork, IWebHostEnvironment webHostEnvironment)
         {
             _unitOfWork = unitOfWork;
@@ -20,9 +21,9 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
         }
 
         #region APICALL
-        public IActionResult AllProducts()
+        public async Task<IActionResult> AllProducts()
         {
-            var products = _unitOfWork.Product.GetAll(includeProperties: "Category");
+            var products = await _unitOfWork.Product.GetAllAsync(includeProperties: "Category");
             return Json(new { data = products });
         }
         #endregion
@@ -33,12 +34,13 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
         }
 
         [HttpGet]
-        public IActionResult CreateUpdate(int? id)
+        public async Task<IActionResult> CreateUpdate(int? id)
         {
+            var a = _unitOfWork.Category.GetAllAsync();
             ProductVM vm = new ()
             {
                 Product = new(),
-                Categories = _unitOfWork.Category.GetAll().Select(x =>
+                Categories = _unitOfWork.Category.GetAllAsync().Result.Select(x =>
                 new SelectListItem()
                 {
                     Text = x.Name,
@@ -49,7 +51,7 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
                 return View(vm);
             else
             {
-                vm.Product = _unitOfWork.Product.GetT(x => x.Id == id);
+                vm.Product = await _unitOfWork.Product.GetTAsync(x => x.Id == id);
                 if (vm.Product == null)
                     return NotFound();
                 else
@@ -59,7 +61,7 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult CreateUpdate(ProductVM vm, IFormFile? file)
+        public async Task<IActionResult> CreateUpdate(ProductVM vm, IFormFile? file)
         {
             if(ModelState.IsValid)
             {
@@ -84,15 +86,15 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
                 }
                 if (vm.Product.Id == 0)
                 {
-                    _unitOfWork.Product.Add(vm.Product);
+                    await _unitOfWork.Product.AddAsync(vm.Product);
                     TempData["success"] = "Product Create Done";
                 }
                 else
                 {
-                    _unitOfWork.Product.Update(vm.Product);
+                    await _unitOfWork.Product.UpdateAsync(vm.Product);
                     TempData["success"] = "Product Create Done";
                 }
-                _unitOfWork.Save();
+                await _unitOfWork.SaveAsync();
                 return RedirectToAction("Index");
             }
             return RedirectToAction("Index");
@@ -100,9 +102,9 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
 
         #region DeleteAPICALL
         [HttpDelete]
-        public IActionResult Delete (int? id)
+        public async Task<IActionResult> Delete (int? id)
         {
-            var product = _unitOfWork.Product.GetT(x => x.Id == id);
+            var product = await _unitOfWork.Product.GetTAsync(x => x.Id == id);
             if (product == null)
                 return Json(new { success = false, message = "Error in Fetching Data" });
             else
@@ -111,11 +113,10 @@ namespace ShoppingCart.Web.Areas.Admin.Controllers
                 if (System.IO.File.Exists(oldImagePath))
                     System.IO.File.Delete(oldImagePath);
                 _unitOfWork.Product.Delete(product);
-                _unitOfWork.Save();
+                await _unitOfWork.SaveAsync();
                 return Json(new { success = true, message = "Product Deleted" });
             }
         }
         #endregion
-
     }
 }

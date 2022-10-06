@@ -15,6 +15,6 @@ namespace ShoppingCart.DataAccess.ViewModels
         [ValidateNever]
         public IEnumerable<Product> Products { get; set; } = new List<Product>();
         [ValidateNever]
-        public IEnumerable<SelectListItem> Categories { get; set; }
+        public IEnumerable<SelectListItem> Categories { get; set; } = new List<SelectListItem>();
     }
 }

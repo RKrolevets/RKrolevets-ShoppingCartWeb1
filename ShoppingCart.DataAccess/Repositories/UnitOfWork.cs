@@ -16,6 +16,7 @@ namespace ShoppingCart.DataAccess.Repositories
         public IApplicationUser ApplicationUser { get; private set; }
         public IOrderHeaderRepository OrderHeader { get; private set; }
         public IOrderDetailRepository OrderDetail { get; private set; }
+
         public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -26,9 +27,10 @@ namespace ShoppingCart.DataAccess.Repositories
             OrderHeader= new OrderHeaderRepository(context);
             OrderDetail = new OrderDetailRepository(context);
         }
-        public void Save ()
+
+        public async Task SaveAsync ()
         {
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
         }
     }
 }

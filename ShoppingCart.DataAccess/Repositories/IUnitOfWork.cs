@@ -14,6 +14,6 @@ namespace ShoppingCart.DataAccess.Repositories
         IApplicationUser ApplicationUser { get; }
         IOrderHeaderRepository OrderHeader { get; }
         IOrderDetailRepository OrderDetail { get; }
-        void Save();
+        Task SaveAsync();
     }
 }

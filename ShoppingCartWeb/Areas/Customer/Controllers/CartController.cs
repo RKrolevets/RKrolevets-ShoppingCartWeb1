@@ -15,17 +15,20 @@ namespace ShoppingCart.Web.Areas.Customer.Controllers
     {
         private IUnitOfWork _unitOfWork;
         public CartVM vm { get; set; }
+
         public CartController (IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
         }
-        public IActionResult Index()
+
+        public async Task<IActionResult> Index()
         {
             var claimsIdentity = (ClaimsIdentity)User.Identity;
             var claims = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
             vm = new CartVM()
             {
-                ListOfCart = _unitOfWork.Cart.GetAll(x => x.ApplicationUserId == claims.Value, includeProperties: "Product"),
+                ListOfCart = await _unitOfWork.Cart.GetAllAsync(x => x.ApplicationUserId == claims.Value, 
+                includeProperties: "Product"),
                 OrderHeader = new OrderHeader()
             };
             foreach (var item in vm.ListOfCart)
@@ -34,16 +37,17 @@ namespace ShoppingCart.Web.Areas.Customer.Controllers
             }
             return View(vm);
         }
-        public IActionResult Summary()
+
+        public async Task<IActionResult> Summary()
         {
             var claimsIdentity = (ClaimsIdentity)User.Identity;
             var claims = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
             vm = new CartVM()
             {
-                ListOfCart = _unitOfWork.Cart.GetAll(x => x.ApplicationUserId == claims.Value, includeProperties: "Product"),
+                ListOfCart = await _unitOfWork.Cart.GetAllAsync(x => x.ApplicationUserId == claims.Value, includeProperties: "Product"),
                 OrderHeader = new OrderHeader()
             };
-            vm.OrderHeader.ApplicationUser = _unitOfWork.ApplicationUser.GetT(x => x.Id == claims.Value);
+            vm.OrderHeader.ApplicationUser = await _unitOfWork.ApplicationUser.GetTAsync(x => x.Id == claims.Value);
             vm.OrderHeader.Name = vm.OrderHeader.ApplicationUser.Name;
             vm.OrderHeader.Phone = vm.OrderHeader.ApplicationUser.PhoneNumber;
             vm.OrderHeader.Address = vm.OrderHeader.ApplicationUser.Address;
@@ -58,11 +62,12 @@ namespace ShoppingCart.Web.Areas.Customer.Controllers
         }
 
         [HttpPost]
-        public IActionResult Summary(CartVM vm)
+        public async Task<IActionResult> Summary(CartVM vm)
         {
             var claimsIdentity = (ClaimsIdentity)User.Identity;
             var claims = claimsIdentity.FindFirst(ClaimTypes.NameIdentifier);
-            vm.ListOfCart = _unitOfWork.Cart.GetAll(x => x.ApplicationUserId == claims.Value, includeProperties: "Product");
+            vm.ListOfCart = await _unitOfWork.Cart.GetAllAsync(x => x.ApplicationUserId == claims.Value, 
+                includeProperties: "Product");
             vm.OrderHeader.OrderStatus = OrderStatus.StatusPending;
             vm.OrderHeader.PaymentStatus = PaymentStatus.StatusPending;
             vm.OrderHeader.DateOfOrder = DateTime.Now;
@@ -71,8 +76,8 @@ namespace ShoppingCart.Web.Areas.Customer.Controllers
             {
                 vm.OrderHeader.OrderTotal += item.Product.Price * item.Count;
             }
-            _unitOfWork.OrderHeader.Add(vm.OrderHeader);
-            _unitOfWork.Save();
+            await _unitOfWork.OrderHeader.AddAsync(vm.OrderHeader);
+            await _unitOfWork.SaveAsync();
             foreach (var item in vm.ListOfCart)
             {
                 OrderDetail orderDetail = new OrderDetail()
@@ -82,8 +87,8 @@ namespace ShoppingCart.Web.Areas.Customer.Controllers
                     Count = item.Count,
                     Price = item.Product.Price
                 };
-                _unitOfWork.OrderDetail.Add(orderDetail);
-                _unitOfWork.Save();
+                await _unitOfWork.OrderDetail.AddAsync(orderDetail);
+                await _unitOfWork.SaveAsync();
             }
             var domain = "https://Localhost:7191/";
             var options = new SessionCreateOptions
@@ -112,62 +117,61 @@ namespace ShoppingCart.Web.Areas.Customer.Controllers
             }
             var service = new SessionService();
             Session session = service.Create(options);
-            _unitOfWork.OrderHeader.PaymentStatus(vm.OrderHeader.Id, session.Id, session.PaymentIntentId);
-            _unitOfWork.Save();
+            await _unitOfWork.OrderHeader.PaymentStatusAsync(vm.OrderHeader.Id, session.Id, session.PaymentIntentId);
+            await _unitOfWork.SaveAsync();
             _unitOfWork.Cart.DeleteRange(vm.ListOfCart);
-            _unitOfWork.Save();
+            await _unitOfWork.SaveAsync();
             Response.Headers.Add("Location", session.Url);
             return new StatusCodeResult(303);
-            return RedirectToAction("Index", "Home");  
         }
+
         [HttpGet]
-        public IActionResult OrderSuccess(int id)
+        public async Task<IActionResult> OrderSuccess(int id)
         {
-            var orderHeader = _unitOfWork.OrderHeader.GetT(x => x.Id == id);
+            var orderHeader = await _unitOfWork.OrderHeader.GetTAsync(x => x.Id == id);
             var service = new SessionService();
             Session session = service.Get(orderHeader.SessionId);
             if (session.PaymentStatus.ToLower() == "paid")
-                _unitOfWork.OrderHeader.UpdateStatus(id, OrderStatus.StatusApproved, PaymentStatus.StatusApproved);
-            List<Cart> cart = _unitOfWork.Cart.GetAll(x => x.ApplicationUserId == orderHeader.ApplicationUserId).ToList();
+                await _unitOfWork.OrderHeader.UpdateStatusAsync(id, OrderStatus.StatusApproved, PaymentStatus.StatusApproved);
+            List<Cart> cart = (await _unitOfWork.Cart.GetAllAsync(x => x.ApplicationUserId == orderHeader.ApplicationUserId)).ToList();
             _unitOfWork.Cart.DeleteRange(cart);
-            _unitOfWork.Save();
+            await _unitOfWork.SaveAsync();
             return View(id);
         }
 
         [HttpGet]
-        public IActionResult Plus(int id)
+        public async Task<IActionResult> Plus(int id)
         {
-            var cart = _unitOfWork.Cart.GetT(x => x.Id == id);
-            _unitOfWork.Cart.IncrementCartItem(cart, 1);
-            _unitOfWork.Save();
+            var cart = await _unitOfWork.Cart.GetTAsync(x => x.Id == id);
+            await _unitOfWork.Cart.IncrementCartItemAsync(cart, 1);
+            await _unitOfWork.SaveAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        public IActionResult Minus(int id)
+        public async Task<ActionResult> Minus(int id)
         {
-            var cart = _unitOfWork.Cart.GetT(x => x.Id == id);
+            var cart = _unitOfWork.Cart.GetTAsync(x => x.Id == id).Result;
             if (cart.Count <= 1)
             {
                 _unitOfWork.Cart.Delete(cart);
-
-                var count = _unitOfWork.Cart.GetAll(x => x.ApplicationUserId == cart.ApplicationUserId)
+                var count = (await _unitOfWork.Cart.GetAllAsync(x => x.ApplicationUserId == cart.ApplicationUserId))
                 .ToList().Count-1;
                 HttpContext.Session.SetInt32("SessionCart", count);
             }
             else
             {
-                _unitOfWork.Cart.DecrementCartItem(cart, 1);
+                await _unitOfWork.Cart.DecrementCartItemAsync(cart, 1);
             }
-            _unitOfWork.Save();
+            await _unitOfWork.SaveAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var cart = _unitOfWork.Cart.GetT(x => x.Id == id);
+            var cart = _unitOfWork.Cart.GetTAsync(x => x.Id == id).Result;
             _unitOfWork.Cart.Delete(cart);
-            _unitOfWork.Save();
-            var count = _unitOfWork.Cart.GetAll(x => x.ApplicationUserId == cart.ApplicationUserId)
+            await _unitOfWork.SaveAsync();
+            var count = (await _unitOfWork.Cart.GetAllAsync(x => x.ApplicationUserId == cart.ApplicationUserId))
                 .ToList().Count;
             HttpContext.Session.SetInt32("SessionCart", count);
             return RedirectToAction(nameof(Index));

@@ -12,7 +12,7 @@ namespace ShoppingCart.DataAccess.ViewModels
     public class CartVM
     {
         public Cart Cart { get; set; } = new Cart();
-        public IEnumerable<Cart> ListOfCart { get; set; }
-        public OrderHeader OrderHeader { get; set; }
+        public IEnumerable<Cart> ListOfCart { get; set; } = new List<Cart>();
+        public OrderHeader OrderHeader { get; set; } = new OrderHeader();
     }
 }

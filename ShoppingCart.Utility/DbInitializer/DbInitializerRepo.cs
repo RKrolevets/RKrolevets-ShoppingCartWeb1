@@ -17,8 +17,7 @@ namespace ShoppingCart.Utility.DbInitializer
 		private readonly ApplicationDbContext _context;
 
 		public DbInitializerRepo (UserManager<IdentityUser> userManager,
-			RoleManager<IdentityRole> roleManager,
-			ApplicationDbContext context)
+			RoleManager<IdentityRole> roleManager, ApplicationDbContext context)
 		{
 			_userManager = userManager;
 			_roleManager = roleManager;
@@ -54,7 +53,7 @@ namespace ShoppingCart.Utility.DbInitializer
 					State = "Ukraine",
 					PinCode = "333011"
 				}, "Admin@123").GetAwaiter().GetResult();
-				ApplicationUser user = _context.ApplicationUsers.FirstOrDefault(x => x.Email == "admin@gmail.com");
+				ApplicationUser user = _context.ApplicationUsers.First(x => x.Email == "admin@gmail.com");
 				_userManager.AddToRoleAsync(user, WebSiteRole.Role_Admin).GetAwaiter().GetResult();
             }
 			return;
